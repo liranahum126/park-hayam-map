@@ -74,7 +74,9 @@
     #sortSel { flex:1; background:var(--panel2); color:var(--text); border:1px solid #475569; border-radius:8px; padding:7px; font-size:12px; }
     #shareBtn { width:100%; background:#22c55e; color:#052e16; border:none; border-radius:8px; padding:9px; font-weight:700; font-size:13px; cursor:pointer; margin-bottom:8px; }
     #shareBtn:hover, #linkBtn:hover { opacity:.92; }
-    #linkBtn { width:100%; background:#38bdf8; color:#06283d; border:none; border-radius:8px; padding:9px; font-weight:700; font-size:13px; cursor:pointer; margin-bottom:12px; }
+    #linkBtn { width:100%; background:#38bdf8; color:#06283d; border:none; border-radius:8px; padding:9px; font-weight:700; font-size:13px; cursor:pointer; margin-bottom:8px; }
+    #clearViewBtn { width:100%; background:transparent; color:#94a3b8; border:1px solid #475569; border-radius:8px; padding:7px; font-size:12px; cursor:pointer; margin-bottom:12px; }
+    #clearViewBtn:hover { color:#e2e8f0; border-color:#64748b; }
     .pop .walk { margin-top:8px; background:#eef2ff; border-radius:8px; padding:7px 9px; font-size:12px; color:#3730a3; }
     .pop .favbtn { margin-top:8px; margin-right:8px; background:#fee2e2; color:#b91c1c; border:none; border-radius:7px; padding:6px 10px; font-size:12px; cursor:pointer; }
     .litem .lfav { cursor:pointer; font-size:15px; user-select:none; float:left; }
@@ -112,6 +114,7 @@
     </div>
     <button id="shareBtn">📤 שתף</button>
     <button id="linkBtn">🔗 העתק קישור לתצוגה</button>
+    <button id="clearViewBtn">↺ אפס תצוגה (נקה קישור)</button>
     <div id="listBody"></div>
   </div>
   <div id="sidebar">
@@ -470,6 +473,8 @@ async function copyViewLink(){
   prompt('העתק את הקישור לתצוגה:', url);
 }
 document.getElementById('linkBtn').onclick = copyViewLink;
+// reset view: drop the #s= from the URL and reload clean defaults (keeps your own saved favorites)
+document.getElementById('clearViewBtn').onclick = () => { location.href = location.origin + location.pathname; };
 
 function popupHtml(a){
   const total = a.rent!=null ? (a.rent + (a.fee||0)) : null;
