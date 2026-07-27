@@ -72,8 +72,9 @@
     .empty { color:#94a3b8; font-size:13px; }
     #sortRow { display:flex; align-items:center; gap:8px; margin-bottom:10px; font-size:12px; color:var(--muted); }
     #sortSel { flex:1; background:var(--panel2); color:var(--text); border:1px solid #475569; border-radius:8px; padding:7px; font-size:12px; }
-    #shareBtn { width:100%; background:#22c55e; color:#052e16; border:none; border-radius:8px; padding:9px; font-weight:700; font-size:13px; cursor:pointer; margin-bottom:12px; }
-    #shareBtn:hover { opacity:.92; }
+    #shareBtn { width:100%; background:#22c55e; color:#052e16; border:none; border-radius:8px; padding:9px; font-weight:700; font-size:13px; cursor:pointer; margin-bottom:8px; }
+    #shareBtn:hover, #linkBtn:hover { opacity:.92; }
+    #linkBtn { width:100%; background:#38bdf8; color:#06283d; border:none; border-radius:8px; padding:9px; font-weight:700; font-size:13px; cursor:pointer; margin-bottom:12px; }
     .pop .walk { margin-top:8px; background:#eef2ff; border-radius:8px; padding:7px 9px; font-size:12px; color:#3730a3; }
     .pop .favbtn { margin-top:8px; margin-right:8px; background:#fee2e2; color:#b91c1c; border:none; border-radius:7px; padding:6px 10px; font-size:12px; cursor:pointer; }
     .litem .lfav { cursor:pointer; font-size:15px; user-select:none; float:left; }
@@ -110,6 +111,7 @@
       </select>
     </div>
     <button id="shareBtn">📤 שתף</button>
+    <button id="linkBtn">🔗 העתק קישור לתצוגה</button>
     <div id="listBody"></div>
   </div>
   <div id="sidebar">
@@ -436,6 +438,39 @@ async function doShare(){
 }
 document.getElementById('shareBtn').onclick = doShare;
 
+// ---------- Shareable view via URL (favorites + filters + sort encoded in the link) ----------
+function encodeState(){
+  const obj = { f:[...favs], st:state, sort:(document.getElementById('sortSel')||{}).value };
+  return btoa(unescape(encodeURIComponent(JSON.stringify(obj))));
+}
+function applyStateToUI(){
+  priceEl.value = state.maxPrice; document.getElementById('priceVal').textContent = (+state.maxPrice).toLocaleString('en-US');
+  sizeEl.value  = state.minSize;  document.getElementById('sizeVal').textContent  = state.minSize + ' מ״ר';
+  constrEl.value = state.minConstrDist; document.getElementById('constrVal').textContent = (state.minConstrDist ? state.minConstrDist + ' מ׳' : 'ללא');
+  document.querySelectorAll('select[data-f]').forEach(sel => { const v = state[sel.dataset.f]; if(v!=null){ sel.value = v; sel.classList.toggle('on', v !== 'any'); } });
+  document.getElementById('favOnly').checked = !!state.favOnly;
+}
+function loadFromHash(){
+  const m = (location.hash || '').match(/[#&]s=([^&]+)/);
+  if(!m) return;
+  try {
+    const obj = JSON.parse(decodeURIComponent(escape(atob(m[1]))));
+    if(Array.isArray(obj.f)) favs = new Set(obj.f);
+    if(obj.st && typeof obj.st === 'object') Object.assign(state, obj.st);
+    if(obj.sort){ const ss = document.getElementById('sortSel'); if(ss) ss.value = obj.sort; }
+    applyStateToUI();
+  } catch(e){ /* bad/old link – ignore, show defaults */ }
+}
+async function copyViewLink(){
+  const url = location.origin + location.pathname + '#s=' + encodeState();
+  history.replaceState(null, '', url); // reflect in the address bar
+  try { if(navigator.share){ await navigator.share({ title:'דירות בפארק הים – תצוגה משותפת', url }); return; } }
+  catch(e){ if(e && e.name === 'AbortError') return; }
+  try { await navigator.clipboard.writeText(url); alert('הקישור לתצוגה הועתק! 🔗\nכל מי שיפתח אותו יראה בדיוק את המועדפים, הסינון והמיון שלך.'); return; } catch(e){}
+  prompt('העתק את הקישור לתצוגה:', url);
+}
+document.getElementById('linkBtn').onclick = copyViewLink;
+
 function popupHtml(a){
   const total = a.rent!=null ? (a.rent + (a.fee||0)) : null;
   const lrt = nearestPOI(a, 'lightrail');
@@ -633,6 +668,7 @@ document.getElementById('reset').onclick = () => {
   apply();
 };
 
+loadFromHash(); // restore a shared view from the URL, if present
 apply();
 </script>
 </body>
