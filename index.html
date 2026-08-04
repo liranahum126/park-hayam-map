@@ -143,6 +143,7 @@
     <div class="card">
       <h2>מאפיינים – סינון (הכל / יש / אין)</h2>
       <label class="chk" style="margin-bottom:10px"><input type="checkbox" id="favOnly"> ❤️ מועדפים בלבד</label>
+      <div class="frow"><span>מספר חדרים 🚪</span><select data-f="rooms"><option value="any">הכל</option><option value="3">3 חדרים</option><option value="4">4 חדרים</option><option value="5">5 חדרים</option></select></div>
       <div class="frow"><span>ממ״ד 🛡️</span><select data-f="mamad"><option value="any">הכל</option><option value="yes">יש</option><option value="no">אין</option></select></div>
       <div class="frow"><span>נוף לים 🌊</span><select data-f="seaView"><option value="any">הכל</option><option value="yes">יש</option><option value="no">אין</option></select></div>
       <div class="frow"><span>כניסה מיידית ⚡</span><select data-f="immediate"><option value="any">הכל</option><option value="yes">יש</option><option value="no">אין</option></select></div>
@@ -267,6 +268,18 @@ apts.forEach(a => {
   if (a.guard === undefined)         a.guard = "unknown";
   if (a.parentBalcony === undefined) a.parentBalcony = "unknown";
 });
+// מספר חדרים לכל דירה (מתוך מודעות yad2 / Nadlan2)
+const ROOMS = {
+  "1kf6ec6t":4,"90ti40xs":4,"nadlan2-15148":4,"zr6r3jmh":4,"ruedlnla":4,"aqzj2kiq":4,"141zhua0":4,"nvmbws69":4,"ijkhgv2t":4,
+  "91zukd72":4,"kzl9wzv7":4,"lf9t6gux":4,"2knnxp64":4,"q5tj52xq":4,"8x4hvq73":4,"mp1bwbun":5,"920s26m1":5,"5g25hrir":5,"kk458u9k":5,"ipfmg8kn":5,
+  "xiyn35zv":5,"crnyuhkx":5,"5gvi0lc3":5,"3lfrsg6p":5,"hkri124y":5,"2c637p40":5,"tm9ba8q7":5,
+  "84vmhuzr":5,"8lq9mqkr":5,"v0jqvq0b":4,"83nxzuz5":5,"mlv1m1um":5,
+  "ku39hvmh":5,"r9w4zbjo":5,"nu45lf3q":5,"xoxin2ij":5,
+  "zp97ep42":4,"qhzzhnsr":4,"05lofjyz":5,"u77s7pz2":5,
+  "35uytzmm":5,"ej8y6f2y":3,
+  "oynioexg":4,"nx0yinls":5,"vb2tozt5":5,"whyjy9bl":4,"3sb6jsbu":5,"jjwj8179":4,"p2s11zim":4
+};
+apts.forEach(a => { if(a.rooms === undefined) a.rooms = ROOMS[a.id] ?? null; });
 
 // ---------- POIs (by category) ----------
 const pois = [
@@ -518,6 +531,7 @@ function popupHtml(a){
     <h3>${a.name}</h3>
     <div class="price">${a.rent!=null ? nis(a.rent)+" ₪ / חודש" : "מחיר לא צוין"}</div>
     <table>
+      <tr><td class="k">🚪 חדרים</td><td>${a.rooms!=null ? a.rooms : "לא צוין"}</td></tr>
       <tr><td class="k">גודל</td><td>${a.size} מ״ר</td></tr>
       <tr><td class="k">קומה</td><td>${a.floor}${a.floors? " מתוך "+a.floors : ""}</td></tr>
       <tr><td class="k">מצב</td><td>${a.cond}</td></tr>
@@ -572,7 +586,7 @@ Object.values(poiLayers).forEach(l => l.addTo(map));
 map.removeLayer(poiLayers.bus); // bus stops off by default (checkbox unchecked)
 
 // ---------- Filtering ----------
-const state = { maxPrice: 9000, minSize: 100, minConstrDist: 150, mamad:"any", seaView:"any", immediate:"any", furnished:"any", twoParking:"any", lowFloor:"any", noBroker:"any", hasPrice:"any", parentBalcony:"any", storage:"any", gym:"any", guard:"any", favOnly:false };
+const state = { maxPrice: 9000, minSize: 100, minConstrDist: 150, rooms:"any", mamad:"any", seaView:"any", immediate:"any", furnished:"any", twoParking:"any", lowFloor:"any", noBroker:"any", hasPrice:"any", parentBalcony:"any", storage:"any", gym:"any", guard:"any", favOnly:false };
 
 // value of each tri-state feature for a given apartment
 function featureVal(a, f){
@@ -588,6 +602,7 @@ function passes(a){
   if(state.favOnly && !favs.has(a.id)) return false;
   if(a.rent!=null && a.rent > state.maxPrice) return false;
   if(a.size < state.minSize) return false;
+  if(state.rooms !== "any" && String(a.rooms) !== state.rooms) return false;
   if(state.minConstrDist > 0 && nearestDist(a, 'construction') < state.minConstrDist) return false;
   for(const f of ["mamad","seaView","immediate","furnished","twoParking","lowFloor","noBroker","hasPrice"]){
     const sel = state[f];
@@ -640,7 +655,7 @@ function renderList(){
   body.innerHTML = list.map(a => `
     <div class="litem${a.recommend?' rec':''}" data-id="${a.id}">
       <div class="lt"><span class="lname">${a.recommend?'<span class="lstar">★</span> ':''}${a.name}</span><span class="lprice">${a.rent!=null?nis(a.rent)+' ₪':'—'}</span></div>
-      <div class="lmeta"><span class="lfav" data-fav="${a.id}">${favs.has(a.id)?'❤️':'🤍'}</span>${a.size} מ״ר · קומה ${a.floor}${a.floors?'/'+a.floors:''}${a.noBroker?' · ללא תיווך':''}${a.parentBalcony==='yes'?' · מרפסת הורים':''}</div>
+      <div class="lmeta"><span class="lfav" data-fav="${a.id}">${favs.has(a.id)?'❤️':'🤍'}</span>${a.rooms?a.rooms+' חד׳ · ':''}${a.size} מ״ר · קומה ${a.floor}${a.floors?'/'+a.floors:''}${a.noBroker?' · ללא תיווך':''}${a.parentBalcony==='yes'?' · מרפסת הורים':''}</div>
     </div>`).join('');
   body.querySelectorAll('.litem').forEach(el => {
     const rec = markers.find(x => x.a.id === el.dataset.id);
@@ -687,7 +702,7 @@ function bindPoi(id, cat){
 bindPoi('poi-leisure','leisure'); bindPoi('poi-playground','playground'); bindPoi('poi-shop','shop'); bindPoi('poi-edu','edu'); bindPoi('poi-health','health'); bindPoi('poi-daycare','daycare'); bindPoi('poi-lightrail','lightrail'); bindPoi('poi-bus','bus'); bindPoi('poi-train','train'); bindPoi('poi-construction','construction');
 
 document.getElementById('reset').onclick = () => {
-  Object.assign(state, { maxPrice:9000, minSize:100, minConstrDist:0, mamad:"any", seaView:"any", immediate:"any", furnished:"any", twoParking:"any", lowFloor:"any", noBroker:"any", hasPrice:"any", parentBalcony:"any", storage:"any", gym:"any", guard:"any", favOnly:false });
+  Object.assign(state, { maxPrice:9000, minSize:100, minConstrDist:0, rooms:"any", mamad:"any", seaView:"any", immediate:"any", furnished:"any", twoParking:"any", lowFloor:"any", noBroker:"any", hasPrice:"any", parentBalcony:"any", storage:"any", gym:"any", guard:"any", favOnly:false });
   priceEl.value = 9000; document.getElementById('priceVal').textContent = '9,000';
   sizeEl.value = 100; document.getElementById('sizeVal').textContent = '100 מ״ר';
   constrEl.value = 0; document.getElementById('constrVal').textContent = 'ללא';
