@@ -108,6 +108,8 @@
         <option value="price-asc">מחיר – מהזול ליקר</option>
         <option value="price-desc">מחיר – מהיקר לזול</option>
         <option value="size-desc">גודל – מהגדול לקטן</option>
+        <option value="rooms-desc">חדרים – מהרבה למעט</option>
+        <option value="rooms-asc">חדרים – מהמעט להרבה</option>
         <option value="floor-asc">קומה – מהנמוך לגבוה</option>
         <option value="lrt-asc">מרחק מרק״ל – מהקרוב לרחוק</option>
       </select>
@@ -643,6 +645,8 @@ function renderList(){
     'price-asc':  (p,q) => (p.rent==null?Infinity:p.rent) - (q.rent==null?Infinity:q.rent),
     'price-desc': (p,q) => (q.rent==null?-1:q.rent) - (p.rent==null?-1:p.rent),
     'size-desc':  (p,q) => q.size - p.size,
+    'rooms-desc': (p,q) => (q.rooms==null?-1:q.rooms) - (p.rooms==null?-1:p.rooms),
+    'rooms-asc':  (p,q) => (p.rooms==null?Infinity:p.rooms) - (q.rooms==null?Infinity:q.rooms),
     'floor-asc':  (p,q) => p.floor - q.floor,
     'lrt-asc':    (p,q) => lrtDist(p) - lrtDist(q),
   }[sortBy];
