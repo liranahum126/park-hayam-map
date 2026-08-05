@@ -116,6 +116,7 @@
     </div>
     <button id="shareBtn">📤 שתף</button>
     <button id="linkBtn">🔗 העתק קישור לתצוגה</button>
+    <button id="favShareBtn">❤️ שתף מועדפים (קישור)</button>
     <button id="clearViewBtn">↺ אפס תצוגה (נקה קישור)</button>
     <div id="listBody"></div>
   </div>
@@ -514,6 +515,36 @@ document.getElementById('linkBtn').onclick = copyViewLink;
 // reset view: drop the #s= from the URL and reload clean defaults (keeps your own saved favorites)
 document.getElementById('clearViewBtn').onclick = () => { location.href = location.origin + location.pathname; };
 
+// ---- שיתוף מועדפים כקישור (הנמען שומר אותם אצלו) ----
+function encodeFavs(){ return btoa(unescape(encodeURIComponent(JSON.stringify([...favs])))); }
+async function copyFavLink(){
+  if(!favs.size){ alert('אין דירות מועדפות לשיתוף. סמן קודם דירות עם ❤️ ואז שתף.'); return; }
+  const url = location.origin + location.pathname + '#fav=' + encodeFavs();
+  try { if(navigator.share){ await navigator.share({ title:'הדירות המועדפות שלי בפארק הים', url }); return; } }
+  catch(e){ if(e && e.name === 'AbortError') return; }
+  try { await navigator.clipboard.writeText(url); alert('קישור המועדפים הועתק! ❤️\nכל מי שיפתח אותו – הדירות שסימנת ייכנסו אצלו וגם יישמרו לו במכשיר.'); return; } catch(e){}
+  prompt('העתק את קישור המועדפים:', url);
+}
+document.getElementById('favShareBtn').onclick = copyFavLink;
+
+// ייבוא מועדפים שהגיעו בקישור #fav= – מיזוג לרשימת המכשיר ושמירה קבועה
+function loadFavsFromHash(){
+  const m = (location.hash || '').match(/[#&]fav=([^&]+)/);
+  if(!m) return;
+  try {
+    const ids = JSON.parse(decodeURIComponent(escape(atob(m[1]))));
+    if(!Array.isArray(ids) || !ids.length) return;
+    const before = favs.size;
+    ids.forEach(id => favs.add(id));
+    saveFavs();                    // נשמר במכשיר הנמען – שורד רענון/עדכונים
+    const added = favs.size - before;
+    state.favOnly = true;          // הצג מיד את המועדפים
+    applyStateToUI();
+    apply();
+    alert(`התקבלו ${ids.length} דירות מועדפות בקישור${added < ids.length ? ` (${added} חדשות נוספו למה שכבר היה לך)` : ''}.\nהן נשמרו אצלך במכשיר ומוצגות כעת. ❤️`);
+  } catch(e){ /* קישור לא תקין – התעלם */ }
+}
+
 function popupHtml(a){
   const total = a.rent!=null ? (a.rent + (a.fee||0)) : null;
   const lrt = nearestPOI(a, 'lightrail');
@@ -715,7 +746,8 @@ document.getElementById('reset').onclick = () => {
   apply();
 };
 
-loadFromHash(); // restore a shared view from the URL, if present
+loadFromHash();     // restore a shared view (#s=) from the URL, if present
+loadFavsFromHash(); // import shared favorites (#fav=) into this device, if present
 apply();
 </script>
 </body>
