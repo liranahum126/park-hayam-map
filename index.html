@@ -466,12 +466,14 @@ function getStatus(id){ return aptStatus[id] || "none"; }
 function setStatus(id, k){ if(!k || k==="none") delete aptStatus[id]; else aptStatus[id]=k; saveStatus(); apply(); }
 function setNote(id, txt){ txt=(txt||"").trim(); if(!txt) delete myNotes[id]; else myNotes[id]=txt; saveNotes(); }
 // wire the status dropdown + personal-notes textarea inside an open popup
-function wirePopup(a){
-  const sel = document.querySelector('.leaflet-popup .statussel');
+function wirePopup(a, popup){
+  // תחום את החיפוש לחלון שנפתח *כרגע* (לא לחלון ישן שעדיין דוהה ב-DOM) – אחרת המאזין מתחבר לחלון הלא נכון
+  const root = (popup && popup.getElement && popup.getElement()) || document;
+  const sel = root.querySelector('.statussel');
   if(sel){ sel.value = getStatus(a.id); sel.onchange = () => setStatus(a.id, sel.value); }
-  const ta = document.querySelector('.leaflet-popup .noteinput');
+  const ta = root.querySelector('.noteinput');
   if(ta){
-    const hint = document.querySelector('.leaflet-popup .notehint');
+    const hint = root.querySelector('.notehint');
     ta.value = myNotes[a.id] || "";
     ta.oninput = () => { setNote(a.id, ta.value); if(hint) hint.textContent = "נשמר אוטומטית ✓"; };
   }
@@ -628,7 +630,7 @@ const markers = apts.map(a => {
   const sw = a.recommend ? 3 : 2;
   const m = L.marker([a.lat, a.lng], { icon: pinIcon(fill, '₪', stroke, sw) })
     .bindPopup(popupHtml(a), { maxWidth: 300 });
-  m.on('popupopen', () => { fillWalk(a); wirePopup(a); });
+  m.on('popupopen', (e) => { fillWalk(a); wirePopup(a, e.popup); });
   m.on('popupclose', () => renderList());
   return { a, m };
 });
