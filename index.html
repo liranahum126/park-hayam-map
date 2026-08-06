@@ -79,7 +79,11 @@
     #clearViewBtn:hover { color:#e2e8f0; border-color:#64748b; }
     .pop .walk { margin-top:8px; background:#eef2ff; border-radius:8px; padding:7px 9px; font-size:12px; color:#3730a3; }
     .pop .favbtn { margin-top:8px; margin-right:8px; background:#fee2e2; color:#b91c1c; border:none; border-radius:7px; padding:6px 10px; font-size:12px; cursor:pointer; }
+    .pop .dislikebtn { margin-top:8px; background:#e2e8f0; color:#475569; border:none; border-radius:7px; padding:6px 10px; font-size:12px; cursor:pointer; }
     .litem .lfav { cursor:pointer; font-size:15px; user-select:none; float:left; }
+    .litem .ldis { cursor:pointer; font-size:15px; user-select:none; float:left; margin-right:7px; opacity:.85; }
+    .litem.dis { opacity:.55; }
+    .litem.dis .lname { text-decoration:line-through; }
     .leaflet-popup-content { direction: rtl; text-align: right; margin: 12px 14px; }
     .pop h3 { margin: 0 0 6px; font-size: 15px; color: #0f172a; }
     .pop .price { font-size: 17px; font-weight: 800; color: #2563eb; margin: 2px 0 8px; }
@@ -147,6 +151,7 @@
       <h2>מאפיינים – סינון (הכל / יש / אין)</h2>
       <label class="chk" style="margin-bottom:10px"><input type="checkbox" id="favOnly"> ❤️ מועדפים בלבד</label>
       <div class="frow"><span>מספר חדרים 🚪</span><select data-f="rooms"><option value="any">הכל</option><option value="3">3 חדרים</option><option value="4">4 חדרים</option><option value="5">5 חדרים</option></select></div>
+      <div class="frow"><span>👎 שלא אהבתי</span><select data-f="dislike"><option value="any">הצג הכל</option><option value="hide">הסתר</option><option value="only">רק אלו</option></select></div>
       <div class="frow"><span>ממ״ד 🛡️</span><select data-f="mamad"><option value="any">הכל</option><option value="yes">יש</option><option value="no">אין</option></select></div>
       <div class="frow"><span>נוף לים 🌊</span><select data-f="seaView"><option value="any">הכל</option><option value="yes">יש</option><option value="no">אין</option></select></div>
       <div class="frow"><span>כניסה מיידית ⚡</span><select data-f="immediate"><option value="any">הכל</option><option value="yes">יש</option><option value="no">אין</option></select></div>
@@ -442,15 +447,32 @@ async function fillWalk(a){
 
 // ---------- Favorites (persisted) ----------
 let favs = new Set();
+let dislikes = new Set();
 try { favs = new Set(JSON.parse(localStorage.getItem('ph_favs') || '[]')); } catch(e){}
+try { dislikes = new Set(JSON.parse(localStorage.getItem('ph_dislikes') || '[]')); } catch(e){}
 function saveFavs(){ try { localStorage.setItem('ph_favs', JSON.stringify([...favs])); } catch(e){} }
-function toggleFav(id){ if(favs.has(id)) favs.delete(id); else favs.add(id); saveFavs(); apply(); }
+function saveDislikes(){ try { localStorage.setItem('ph_dislikes', JSON.stringify([...dislikes])); } catch(e){} }
+// ❤️ ו-👎 הדדיים: סימון אחד מבטל את השני
+function toggleFav(id){
+  if(favs.has(id)) favs.delete(id);
+  else { favs.add(id); dislikes.delete(id); saveDislikes(); }
+  saveFavs(); apply();
+}
+function toggleDislike(id){
+  if(dislikes.has(id)) dislikes.delete(id);
+  else { dislikes.add(id); favs.delete(id); saveFavs(); }
+  saveDislikes(); apply();
+}
 function wireFav(a){
-  const btn = document.querySelector('.leaflet-popup .favbtn');
-  if(!btn) return;
-  const paint = () => btn.textContent = favs.has(a.id) ? "❤️ מסומן כמועדף" : "🤍 סמן כמועדף";
+  const fbtn = document.querySelector('.leaflet-popup .favbtn');
+  const dbtn = document.querySelector('.leaflet-popup .dislikebtn');
+  const paint = () => {
+    if(fbtn) fbtn.textContent = favs.has(a.id) ? "❤️ מסומן כמועדף" : "🤍 סמן כמועדף";
+    if(dbtn) dbtn.textContent = dislikes.has(a.id) ? "🚫 סומן: לא אהבתי" : "👎 לא אהבתי";
+  };
   paint();
-  btn.onclick = () => { toggleFav(a.id); paint(); };
+  if(fbtn) fbtn.onclick = () => { toggleFav(a.id); paint(); };
+  if(dbtn) dbtn.onclick = () => { toggleDislike(a.id); paint(); };
 }
 
 // ---------- Share / export ----------
@@ -535,8 +557,8 @@ function loadFavsFromHash(){
     const ids = JSON.parse(decodeURIComponent(escape(atob(m[1]))));
     if(!Array.isArray(ids) || !ids.length) return;
     const before = favs.size;
-    ids.forEach(id => favs.add(id));
-    saveFavs();                    // נשמר במכשיר הנמען – שורד רענון/עדכונים
+    ids.forEach(id => { favs.add(id); dislikes.delete(id); }); // מועדף מנצח סימון "לא אהבתי" קודם
+    saveFavs(); saveDislikes();    // נשמר במכשיר הנמען – שורד רענון/עדכונים
     const added = favs.size - before;
     state.favOnly = true;          // הצג מיד את המועדפים
     applyStateToUI();
@@ -587,6 +609,7 @@ function popupHtml(a){
     <div class="walk">🚶 זמן הליכה: 🏖️ ים <b id="w-beach-${a.id}">…</b> · 🌳 פארק/גינה <b id="w-park-${a.id}">…</b> · 🚈 רק״ל <b id="w-lrt-${a.id}">…</b> · ✚ מכבי <b id="w-macc-${a.id}">…</b></div>
     <div class="contact">☎️ <b>יצירת קשר:</b> ${a.contact}<div class="src">מקור: ${srcName}${a.approx ? " · 📍 מיקום מקורב" : ""}</div></div>
     <button class="favbtn" data-fav="${a.id}">🤍 סמן כמועדף</button>
+    <button class="dislikebtn" data-dis="${a.id}">👎 לא אהבתי</button>
     <a class="btn" href="${a.url}" target="_blank">פתח מודעה + הצג טלפון ↗</a>
   </div>`;
 }
@@ -619,7 +642,7 @@ Object.values(poiLayers).forEach(l => l.addTo(map));
 map.removeLayer(poiLayers.bus); // bus stops off by default (checkbox unchecked)
 
 // ---------- Filtering ----------
-const state = { maxPrice: 9000, minSize: 100, minConstrDist: 150, rooms:"any", mamad:"any", seaView:"any", immediate:"any", furnished:"any", twoParking:"any", lowFloor:"any", noBroker:"any", hasPrice:"any", parentBalcony:"any", storage:"any", gym:"any", guard:"any", favOnly:false };
+const state = { maxPrice: 9000, minSize: 100, minConstrDist: 150, rooms:"any", dislike:"any", mamad:"any", seaView:"any", immediate:"any", furnished:"any", twoParking:"any", lowFloor:"any", noBroker:"any", hasPrice:"any", parentBalcony:"any", storage:"any", gym:"any", guard:"any", favOnly:false };
 
 // value of each tri-state feature for a given apartment
 function featureVal(a, f){
@@ -633,6 +656,8 @@ function featureVal(a, f){
 
 function passes(a){
   if(state.favOnly && !favs.has(a.id)) return false;
+  if(state.dislike === "hide" && dislikes.has(a.id)) return false;
+  if(state.dislike === "only" && !dislikes.has(a.id)) return false;
   if(a.rent!=null && a.rent > state.maxPrice) return false;
   if(a.size < state.minSize) return false;
   if(state.rooms !== "any" && String(a.rooms) !== state.rooms) return false;
@@ -688,9 +713,9 @@ function renderList(){
   const body = document.getElementById('listBody');
   if(!list.length){ body.innerHTML = '<div class="empty">אין דירות שתואמות את הסינון.</div>'; return; }
   body.innerHTML = list.map(a => `
-    <div class="litem${a.recommend?' rec':''}" data-id="${a.id}">
+    <div class="litem${a.recommend?' rec':''}${dislikes.has(a.id)?' dis':''}" data-id="${a.id}">
       <div class="lt"><span class="lname">${a.recommend?'<span class="lstar">★</span> ':''}${a.name}</span><span class="lprice">${a.rent!=null?nis(a.rent)+' ₪':'—'}</span></div>
-      <div class="lmeta"><span class="lfav" data-fav="${a.id}">${favs.has(a.id)?'❤️':'🤍'}</span>${a.rooms?a.rooms+' חד׳ · ':''}${a.size} מ״ר · קומה ${a.floor}${a.floors?'/'+a.floors:''}${a.noBroker?' · ללא תיווך':''}${a.parentBalcony==='yes'?' · מרפסת הורים':''}</div>
+      <div class="lmeta"><span class="lfav" data-fav="${a.id}">${favs.has(a.id)?'❤️':'🤍'}</span><span class="ldis" data-dis="${a.id}">${dislikes.has(a.id)?'🚫':'👎'}</span>${a.rooms?a.rooms+' חד׳ · ':''}${a.size} מ״ר · קומה ${a.floor}${a.floors?'/'+a.floors:''}${a.noBroker?' · ללא תיווך':''}${a.parentBalcony==='yes'?' · מרפסת הורים':''}</div>
     </div>`).join('');
   body.querySelectorAll('.litem').forEach(el => {
     const rec = markers.find(x => x.a.id === el.dataset.id);
@@ -701,6 +726,9 @@ function renderList(){
   });
   body.querySelectorAll('.lfav').forEach(el => {
     el.onclick = (e) => { e.stopPropagation(); toggleFav(el.dataset.fav); };
+  });
+  body.querySelectorAll('.ldis').forEach(el => {
+    el.onclick = (e) => { e.stopPropagation(); toggleDislike(el.dataset.dis); };
   });
 }
 
@@ -737,7 +765,7 @@ function bindPoi(id, cat){
 bindPoi('poi-leisure','leisure'); bindPoi('poi-playground','playground'); bindPoi('poi-shop','shop'); bindPoi('poi-edu','edu'); bindPoi('poi-health','health'); bindPoi('poi-daycare','daycare'); bindPoi('poi-lightrail','lightrail'); bindPoi('poi-bus','bus'); bindPoi('poi-train','train'); bindPoi('poi-construction','construction');
 
 document.getElementById('reset').onclick = () => {
-  Object.assign(state, { maxPrice:9000, minSize:100, minConstrDist:0, rooms:"any", mamad:"any", seaView:"any", immediate:"any", furnished:"any", twoParking:"any", lowFloor:"any", noBroker:"any", hasPrice:"any", parentBalcony:"any", storage:"any", gym:"any", guard:"any", favOnly:false });
+  Object.assign(state, { maxPrice:9000, minSize:100, minConstrDist:0, rooms:"any", dislike:"any", mamad:"any", seaView:"any", immediate:"any", furnished:"any", twoParking:"any", lowFloor:"any", noBroker:"any", hasPrice:"any", parentBalcony:"any", storage:"any", gym:"any", guard:"any", favOnly:false });
   priceEl.value = 9000; document.getElementById('priceVal').textContent = '9,000';
   sizeEl.value = 100; document.getElementById('sizeVal').textContent = '100 מ״ר';
   constrEl.value = 0; document.getElementById('constrVal').textContent = 'ללא';
