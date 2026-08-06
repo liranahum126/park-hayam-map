@@ -78,11 +78,13 @@
     #clearViewBtn { width:100%; background:transparent; color:#94a3b8; border:1px solid #475569; border-radius:8px; padding:7px; font-size:12px; cursor:pointer; margin-bottom:12px; }
     #clearViewBtn:hover { color:#e2e8f0; border-color:#64748b; }
     .pop .walk { margin-top:8px; background:#eef2ff; border-radius:8px; padding:7px 9px; font-size:12px; color:#3730a3; }
-    .pop .favbtn { margin-top:8px; margin-right:8px; background:#fee2e2; color:#b91c1c; border:none; border-radius:7px; padding:6px 10px; font-size:12px; cursor:pointer; }
-    .pop .dislikebtn { margin-top:8px; background:#e2e8f0; color:#475569; border:none; border-radius:7px; padding:6px 10px; font-size:12px; cursor:pointer; }
-    .litem .lfav { cursor:pointer; font-size:15px; user-select:none; float:left; }
-    .litem .ldis { cursor:pointer; font-size:15px; user-select:none; float:left; margin-right:7px; opacity:.85; }
-    .litem.dis { opacity:.55; }
+    .pop .statuswrap { margin-top:10px; }
+    .pop .statuswrap label { display:block; font-size:11px; color:#64748b; margin-bottom:3px; }
+    .pop select.statussel { width:100%; padding:6px 8px; border:1px solid #cbd5e1; border-radius:7px; font-size:13px; background:#f8fafc; color:#0f172a; }
+    .pop textarea.noteinput { width:100%; box-sizing:border-box; margin-top:8px; padding:6px 8px; border:1px solid #cbd5e1; border-radius:7px; font-size:12.5px; resize:vertical; min-height:46px; font-family:inherit; color:#0f172a; }
+    .pop .notehint { font-size:10.5px; color:#94a3b8; margin-top:3px; }
+    .litem .lstatus { float:left; font-size:11px; padding:1px 8px; border-radius:10px; user-select:none; white-space:nowrap; }
+    .litem.dis { opacity:.6; }
     .litem.dis .lname { text-decoration:line-through; }
     .leaflet-popup-content { direction: rtl; text-align: right; margin: 12px 14px; }
     .pop h3 { margin: 0 0 6px; font-size: 15px; color: #0f172a; }
@@ -120,7 +122,7 @@
     </div>
     <button id="shareBtn">📤 שתף</button>
     <button id="linkBtn">🔗 העתק קישור לתצוגה</button>
-    <button id="favShareBtn">❤️ שתף מועדפים (קישור)</button>
+    <button id="favShareBtn">🏷️ שתף סטטוסים והערות (קישור)</button>
     <button id="clearViewBtn">↺ אפס תצוגה (נקה קישור)</button>
     <div id="listBody"></div>
   </div>
@@ -149,9 +151,8 @@
 
     <div class="card">
       <h2>מאפיינים – סינון (הכל / יש / אין)</h2>
-      <label class="chk" style="margin-bottom:10px"><input type="checkbox" id="favOnly"> ❤️ מועדפים בלבד</label>
+      <div class="frow"><span>🏷️ סטטוס אישי</span><select data-f="statusFilter"><option value="any">כל הסטטוסים</option><option value="none">⚪ טרם נבדקה</option><option value="seen">👀 נצפתה</option><option value="like">❤️ אהובה</option><option value="dislike">👎 פסולה</option><option value="contacted">☎️ יצרתי קשר</option><option value="visit">📅 נקבע ביקור</option></select></div>
       <div class="frow"><span>מספר חדרים 🚪</span><select data-f="rooms"><option value="any">הכל</option><option value="3">3 חדרים</option><option value="4">4 חדרים</option><option value="5">5 חדרים</option></select></div>
-      <div class="frow"><span>👎 שלא אהבתי</span><select data-f="dislike"><option value="any">הצג הכל</option><option value="hide">הסתר</option><option value="only">רק אלו</option></select></div>
       <div class="frow"><span>ממ״ד 🛡️</span><select data-f="mamad"><option value="any">הכל</option><option value="yes">יש</option><option value="no">אין</option></select></div>
       <div class="frow"><span>נוף לים 🌊</span><select data-f="seaView"><option value="any">הכל</option><option value="yes">יש</option><option value="no">אין</option></select></div>
       <div class="frow"><span>כניסה מיידית ⚡</span><select data-f="immediate"><option value="any">הכל</option><option value="yes">יש</option><option value="no">אין</option></select></div>
@@ -446,47 +447,47 @@ async function fillWalk(a){
 }
 
 // ---------- Favorites (persisted) ----------
-let favs = new Set();
-let dislikes = new Set();
-try { favs = new Set(JSON.parse(localStorage.getItem('ph_favs') || '[]')); } catch(e){}
-try { dislikes = new Set(JSON.parse(localStorage.getItem('ph_dislikes') || '[]')); } catch(e){}
-function saveFavs(){ try { localStorage.setItem('ph_favs', JSON.stringify([...favs])); } catch(e){} }
-function saveDislikes(){ try { localStorage.setItem('ph_dislikes', JSON.stringify([...dislikes])); } catch(e){} }
-// ❤️ ו-👎 הדדיים: סימון אחד מבטל את השני
-function toggleFav(id){
-  if(favs.has(id)) favs.delete(id);
-  else { favs.add(id); dislikes.delete(id); saveDislikes(); }
-  saveFavs(); apply();
-}
-function toggleDislike(id){
-  if(dislikes.has(id)) dislikes.delete(id);
-  else { dislikes.add(id); favs.delete(id); saveFavs(); }
-  saveDislikes(); apply();
-}
-function wireFav(a){
-  const fbtn = document.querySelector('.leaflet-popup .favbtn');
-  const dbtn = document.querySelector('.leaflet-popup .dislikebtn');
-  const paint = () => {
-    if(fbtn) fbtn.textContent = favs.has(a.id) ? "❤️ מסומן כמועדף" : "🤍 סמן כמועדף";
-    if(dbtn) dbtn.textContent = dislikes.has(a.id) ? "🚫 סומן: לא אהבתי" : "👎 לא אהבתי";
-  };
-  paint();
-  if(fbtn) fbtn.onclick = () => { toggleFav(a.id); paint(); };
-  if(dbtn) dbtn.onclick = () => { toggleDislike(a.id); paint(); };
+const STATUSES = [
+  { k:"none",     label:"טרם נבדקה",  icon:"⚪", color:"#e2e8f0", fg:"#475569" },
+  { k:"seen",     label:"נצפתה",      icon:"👀", color:"#e0f2fe", fg:"#0369a1" },
+  { k:"like",     label:"אהובה",      icon:"❤️", color:"#fee2e2", fg:"#b91c1c" },
+  { k:"dislike",  label:"פסולה",      icon:"👎", color:"#e5e7eb", fg:"#6b7280" },
+  { k:"contacted",label:"יצרתי קשר",  icon:"☎️", color:"#fef9c3", fg:"#a16207" },
+  { k:"visit",    label:"נקבע ביקור", icon:"📅", color:"#dcfce7", fg:"#15803d" },
+];
+const STATUS_MAP = Object.fromEntries(STATUSES.map(s => [s.k, s]));
+let aptStatus = {};  // id -> status key
+let myNotes = {};    // id -> free text
+try { aptStatus = JSON.parse(localStorage.getItem('ph_status') || '{}') || {}; } catch(e){ aptStatus = {}; }
+try { myNotes  = JSON.parse(localStorage.getItem('ph_notes')  || '{}') || {}; } catch(e){ myNotes  = {}; }
+function saveStatus(){ try { localStorage.setItem('ph_status', JSON.stringify(aptStatus)); } catch(e){} }
+function saveNotes(){  try { localStorage.setItem('ph_notes',  JSON.stringify(myNotes));  } catch(e){} }
+function getStatus(id){ return aptStatus[id] || "none"; }
+function setStatus(id, k){ if(!k || k==="none") delete aptStatus[id]; else aptStatus[id]=k; saveStatus(); apply(); }
+function setNote(id, txt){ txt=(txt||"").trim(); if(!txt) delete myNotes[id]; else myNotes[id]=txt; saveNotes(); }
+// wire the status dropdown + personal-notes textarea inside an open popup
+function wirePopup(a){
+  const sel = document.querySelector('.leaflet-popup .statussel');
+  if(sel){ sel.value = getStatus(a.id); sel.onchange = () => setStatus(a.id, sel.value); }
+  const ta = document.querySelector('.leaflet-popup .noteinput');
+  if(ta){
+    const hint = document.querySelector('.leaflet-popup .notehint');
+    ta.value = myNotes[a.id] || "";
+    ta.oninput = () => { setNote(a.id, ta.value); if(hint) hint.textContent = "נשמר אוטומטית ✓"; };
+  }
 }
 
 // ---------- Share / export ----------
 function shareText(){
-  const chosen = markers.map(x => x.a).filter(a => favs.has(a.id));
-  const usingFavs = chosen.length > 0;
-  const list = (usingFavs ? chosen : markers.map(x => x.a).filter(passes))
+  const list = markers.map(x => x.a).filter(passes)
     .sort((p,q) => (p.rent==null?Infinity:p.rent) - (q.rent==null?Infinity:q.rent));
-  const heading = usingFavs
-    ? `🏠 דירות מועדפות בפארק הים, בת ים (${list.length})`
-    : `🏠 דירות בפארק הים, בת ים – לפי הסינון (${list.length})`;
-  const body = list.map((a,i) =>
-    `${i+1}. ${a.name} | ${a.rent!=null ? nis(a.rent)+' ₪/חודש' : 'מחיר לא צוין'} | ${a.size} מ״ר, קומה ${a.floor}${a.floors?'/'+a.floors:''}\n   קשר: ${a.contact}\n   ${a.url}`
-  ).join("\n\n");
+  const heading = `🏠 דירות בפארק הים, בת ים – לפי הסינון (${list.length})`;
+  const body = list.map((a,i) => {
+    const stKey = getStatus(a.id);
+    const stLine = stKey !== "none" ? `\n   סטטוס: ${STATUS_MAP[stKey].icon} ${STATUS_MAP[stKey].label}` : "";
+    const ntLine = myNotes[a.id] ? `\n   הערה: ${myNotes[a.id]}` : "";
+    return `${i+1}. ${a.name} | ${a.rent!=null ? nis(a.rent)+' ₪/חודש' : 'מחיר לא צוין'} | ${a.size} מ״ר, קומה ${a.floor}${a.floors?'/'+a.floors:''}${stLine}${ntLine}\n   קשר: ${a.contact}\n   ${a.url}`;
+  }).join("\n\n");
   return heading + "\n\n" + body;
 }
 async function doShare(){
@@ -504,7 +505,7 @@ document.getElementById('shareBtn').onclick = doShare;
 
 // ---------- Shareable view via URL (favorites + filters + sort encoded in the link) ----------
 function encodeState(){
-  const obj = { f:[...favs], st:state, sort:(document.getElementById('sortSel')||{}).value };
+  const obj = { st:state, sort:(document.getElementById('sortSel')||{}).value };
   return btoa(unescape(encodeURIComponent(JSON.stringify(obj))));
 }
 function applyStateToUI(){
@@ -512,14 +513,12 @@ function applyStateToUI(){
   sizeEl.value  = state.minSize;  document.getElementById('sizeVal').textContent  = state.minSize + ' מ״ר';
   constrEl.value = state.minConstrDist; document.getElementById('constrVal').textContent = (state.minConstrDist ? state.minConstrDist + ' מ׳' : 'ללא');
   document.querySelectorAll('select[data-f]').forEach(sel => { const v = state[sel.dataset.f]; if(v!=null){ sel.value = v; sel.classList.toggle('on', v !== 'any'); } });
-  document.getElementById('favOnly').checked = !!state.favOnly;
 }
 function loadFromHash(){
   const m = (location.hash || '').match(/[#&]s=([^&]+)/);
   if(!m) return;
   try {
     const obj = JSON.parse(decodeURIComponent(escape(atob(m[1]))));
-    if(Array.isArray(obj.f)) favs = new Set(obj.f);
     if(obj.st && typeof obj.st === 'object') Object.assign(state, obj.st);
     if(obj.sort){ const ss = document.getElementById('sortSel'); if(ss) ss.value = obj.sort; }
     applyStateToUI();
@@ -530,40 +529,45 @@ async function copyViewLink(){
   history.replaceState(null, '', url); // reflect in the address bar
   try { if(navigator.share){ await navigator.share({ title:'דירות בפארק הים – תצוגה משותפת', url }); return; } }
   catch(e){ if(e && e.name === 'AbortError') return; }
-  try { await navigator.clipboard.writeText(url); alert('הקישור לתצוגה הועתק! 🔗\nכל מי שיפתח אותו יראה בדיוק את המועדפים, הסינון והמיון שלך.'); return; } catch(e){}
+  try { await navigator.clipboard.writeText(url); alert('הקישור לתצוגה הועתק! 🔗\nכל מי שיפתח אותו יראה בדיוק את הסינון והמיון שלך (הסטטוסים נשלחים בכפתור הנפרד).'); return; } catch(e){}
   prompt('העתק את הקישור לתצוגה:', url);
 }
 document.getElementById('linkBtn').onclick = copyViewLink;
 // reset view: drop the #s= from the URL and reload clean defaults (keeps your own saved favorites)
 document.getElementById('clearViewBtn').onclick = () => { location.href = location.origin + location.pathname; };
 
-// ---- שיתוף מועדפים כקישור (הנמען שומר אותם אצלו) ----
-function encodeFavs(){ return btoa(unescape(encodeURIComponent(JSON.stringify([...favs])))); }
-async function copyFavLink(){
-  if(!favs.size){ alert('אין דירות מועדפות לשיתוף. סמן קודם דירות עם ❤️ ואז שתף.'); return; }
-  const url = location.origin + location.pathname + '#fav=' + encodeFavs();
-  try { if(navigator.share){ await navigator.share({ title:'הדירות המועדפות שלי בפארק הים', url }); return; } }
+// ---- שיתוף סטטוסים + הערות כקישור (הנמען מקבל ושומר אצלו) ----
+function encodeMyData(){ return btoa(unescape(encodeURIComponent(JSON.stringify({ stt:aptStatus, nt:myNotes })))); }
+async function copyDataLink(){
+  if(!Object.keys(aptStatus).length && !Object.keys(myNotes).length){ alert('אין עדיין סטטוסים או הערות לשיתוף. בחר סטטוס / כתוב הערה על דירה ואז שתף.'); return; }
+  const url = location.origin + location.pathname + '#data=' + encodeMyData();
+  try { if(navigator.share){ await navigator.share({ title:'הסטטוסים וההערות שלי – דירות פארק הים', url }); return; } }
   catch(e){ if(e && e.name === 'AbortError') return; }
-  try { await navigator.clipboard.writeText(url); alert('קישור המועדפים הועתק! ❤️\nכל מי שיפתח אותו – הדירות שסימנת ייכנסו אצלו וגם יישמרו לו במכשיר.'); return; } catch(e){}
-  prompt('העתק את קישור המועדפים:', url);
+  try { await navigator.clipboard.writeText(url); alert('הקישור הועתק! 🏷️\nכל מי שיפתח אותו – הסטטוסים וההערות שסימנת ייכנסו אצלו ויישמרו לו במכשיר.'); return; } catch(e){}
+  prompt('העתק את הקישור:', url);
 }
-document.getElementById('favShareBtn').onclick = copyFavLink;
+document.getElementById('favShareBtn').onclick = copyDataLink;
 
-// ייבוא מועדפים שהגיעו בקישור #fav= – מיזוג לרשימת המכשיר ושמירה קבועה
-function loadFavsFromHash(){
-  const m = (location.hash || '').match(/[#&]fav=([^&]+)/);
-  if(!m) return;
+// ייבוא סטטוסים/הערות שהגיעו בקישור (#data= חדש, או #fav= ישן) – מיזוג ושמירה במכשיר
+function loadMyDataFromHash(){
+  const md = (location.hash || '').match(/[#&]data=([^&]+)/);
+  const fv = (location.hash || '').match(/[#&]fav=([^&]+)/);
   try {
-    const ids = JSON.parse(decodeURIComponent(escape(atob(m[1]))));
-    if(!Array.isArray(ids) || !ids.length) return;
-    const before = favs.size;
-    ids.forEach(id => { favs.add(id); dislikes.delete(id); }); // מועדף מנצח סימון "לא אהבתי" קודם
-    saveFavs(); saveDislikes();    // נשמר במכשיר הנמען – שורד רענון/עדכונים
-    const added = favs.size - before;
-    state.favOnly = true;          // הצג מיד את המועדפים
-    applyStateToUI();
-    apply();
-    alert(`התקבלו ${ids.length} דירות מועדפות בקישור${added < ids.length ? ` (${added} חדשות נוספו למה שכבר היה לך)` : ''}.\nהן נשמרו אצלך במכשיר ומוצגות כעת. ❤️`);
+    if(md){
+      const obj = JSON.parse(decodeURIComponent(escape(atob(md[1]))));
+      let n = 0;
+      if(obj.stt && typeof obj.stt === 'object'){ Object.assign(aptStatus, obj.stt); n = Object.keys(obj.stt).length; saveStatus(); }
+      if(obj.nt  && typeof obj.nt  === 'object'){ Object.assign(myNotes,  obj.nt);  saveNotes(); }
+      apply();
+      alert(`התקבלו סטטוסים והערות בקישור${n ? ` (${n} דירות מסומנות)` : ''}.\nהם נשמרו אצלך במכשיר. 🏷️`);
+    } else if(fv){
+      const ids = JSON.parse(decodeURIComponent(escape(atob(fv[1]))));
+      if(Array.isArray(ids) && ids.length){
+        ids.forEach(id => { aptStatus[id] = 'like'; });
+        saveStatus(); apply();
+        alert(`התקבלו ${ids.length} דירות מסומנות כ"אהובה" בקישור. נשמרו אצלך במכשיר. ❤️`);
+      }
+    }
   } catch(e){ /* קישור לא תקין – התעלם */ }
 }
 
@@ -608,8 +612,12 @@ function popupHtml(a){
     <div style="font-size:12px;color:#475569;margin-top:8px">${a.notes}</div>
     <div class="walk">🚶 זמן הליכה: 🏖️ ים <b id="w-beach-${a.id}">…</b> · 🌳 פארק/גינה <b id="w-park-${a.id}">…</b> · 🚈 רק״ל <b id="w-lrt-${a.id}">…</b> · ✚ מכבי <b id="w-macc-${a.id}">…</b></div>
     <div class="contact">☎️ <b>יצירת קשר:</b> ${a.contact}<div class="src">מקור: ${srcName}${a.approx ? " · 📍 מיקום מקורב" : ""}</div></div>
-    <button class="favbtn" data-fav="${a.id}">🤍 סמן כמועדף</button>
-    <button class="dislikebtn" data-dis="${a.id}">👎 לא אהבתי</button>
+    <div class="statuswrap">
+      <label>הסטטוס שלי לדירה זו:</label>
+      <select class="statussel">${STATUSES.map(s=>`<option value="${s.k}">${s.icon} ${s.label}</option>`).join("")}</select>
+      <textarea class="noteinput" placeholder="📝 הערות אישיות (למשל: לשאול על ארנונה, קרוב לגן…)"></textarea>
+      <div class="notehint">הסטטוס וההערה נשמרים אוטומטית במכשיר שלך</div>
+    </div>
     <a class="btn" href="${a.url}" target="_blank">פתח מודעה + הצג טלפון ↗</a>
   </div>`;
 }
@@ -620,7 +628,8 @@ const markers = apts.map(a => {
   const sw = a.recommend ? 3 : 2;
   const m = L.marker([a.lat, a.lng], { icon: pinIcon(fill, '₪', stroke, sw) })
     .bindPopup(popupHtml(a), { maxWidth: 300 });
-  m.on('popupopen', () => { fillWalk(a); wireFav(a); });
+  m.on('popupopen', () => { fillWalk(a); wirePopup(a); });
+  m.on('popupclose', () => renderList());
   return { a, m };
 });
 
@@ -642,7 +651,7 @@ Object.values(poiLayers).forEach(l => l.addTo(map));
 map.removeLayer(poiLayers.bus); // bus stops off by default (checkbox unchecked)
 
 // ---------- Filtering ----------
-const state = { maxPrice: 9000, minSize: 100, minConstrDist: 150, rooms:"any", dislike:"any", mamad:"any", seaView:"any", immediate:"any", furnished:"any", twoParking:"any", lowFloor:"any", noBroker:"any", hasPrice:"any", parentBalcony:"any", storage:"any", gym:"any", guard:"any", favOnly:false };
+const state = { maxPrice: 9000, minSize: 100, minConstrDist: 150, rooms:"any", statusFilter:"any", mamad:"any", seaView:"any", immediate:"any", furnished:"any", twoParking:"any", lowFloor:"any", noBroker:"any", hasPrice:"any", parentBalcony:"any", storage:"any", gym:"any", guard:"any" };
 
 // value of each tri-state feature for a given apartment
 function featureVal(a, f){
@@ -655,9 +664,7 @@ function featureVal(a, f){
 }
 
 function passes(a){
-  if(state.favOnly && !favs.has(a.id)) return false;
-  if(state.dislike === "hide" && dislikes.has(a.id)) return false;
-  if(state.dislike === "only" && !dislikes.has(a.id)) return false;
+  if(state.statusFilter && state.statusFilter !== "any" && getStatus(a.id) !== state.statusFilter) return false;
   if(a.rent!=null && a.rent > state.maxPrice) return false;
   if(a.size < state.minSize) return false;
   if(state.rooms !== "any" && String(a.rooms) !== state.rooms) return false;
@@ -709,13 +716,13 @@ function renderList(){
   const list = markers.map(x => x.a).filter(passes).sort(cmp);
   document.getElementById('listTitle').textContent = `רשימת דירות (${list.length})`;
   const sb = document.getElementById('shareBtn');
-  if(sb) sb.textContent = favs.size ? `📤 שתף מועדפים (${favs.size})` : '📤 שתף רשימה מסוננת';
+  if(sb){ const marked = Object.keys(aptStatus).length; sb.textContent = marked ? `📤 שתף רשימה (${marked} מסומנות)` : '📤 שתף רשימה מסוננת'; }
   const body = document.getElementById('listBody');
   if(!list.length){ body.innerHTML = '<div class="empty">אין דירות שתואמות את הסינון.</div>'; return; }
   body.innerHTML = list.map(a => `
-    <div class="litem${a.recommend?' rec':''}${dislikes.has(a.id)?' dis':''}" data-id="${a.id}">
+    <div class="litem${a.recommend?' rec':''}${getStatus(a.id)==='dislike'?' dis':''}" data-id="${a.id}">
       <div class="lt"><span class="lname">${a.recommend?'<span class="lstar">★</span> ':''}${a.name}</span><span class="lprice">${a.rent!=null?nis(a.rent)+' ₪':'—'}</span></div>
-      <div class="lmeta"><span class="lfav" data-fav="${a.id}">${favs.has(a.id)?'❤️':'🤍'}</span><span class="ldis" data-dis="${a.id}">${dislikes.has(a.id)?'🚫':'👎'}</span>${a.rooms?a.rooms+' חד׳ · ':''}${a.size} מ״ר · קומה ${a.floor}${a.floors?'/'+a.floors:''}${a.noBroker?' · ללא תיווך':''}${a.parentBalcony==='yes'?' · מרפסת הורים':''}</div>
+      <div class="lmeta"><span class="lstatus" style="background:${STATUS_MAP[getStatus(a.id)].color};color:${STATUS_MAP[getStatus(a.id)].fg}">${STATUS_MAP[getStatus(a.id)].icon} ${STATUS_MAP[getStatus(a.id)].label}</span>${myNotes[a.id]?' <span title="יש הערה">📝</span>':''} ${a.rooms?a.rooms+' חד׳ · ':''}${a.size} מ״ר · קומה ${a.floor}${a.floors?'/'+a.floors:''}${a.noBroker?' · ללא תיווך':''}${a.parentBalcony==='yes'?' · מרפסת הורים':''}</div>
     </div>`).join('');
   body.querySelectorAll('.litem').forEach(el => {
     const rec = markers.find(x => x.a.id === el.dataset.id);
@@ -724,18 +731,11 @@ function renderList(){
     el.onmouseleave = () => clearHighlight();
     el.onclick = () => { map.setView([rec.a.lat, rec.a.lng], 17, {animate:false}); rec.m.openPopup(); };
   });
-  body.querySelectorAll('.lfav').forEach(el => {
-    el.onclick = (e) => { e.stopPropagation(); toggleFav(el.dataset.fav); };
-  });
-  body.querySelectorAll('.ldis').forEach(el => {
-    el.onclick = (e) => { e.stopPropagation(); toggleDislike(el.dataset.dis); };
-  });
 }
 
 document.getElementById('listBtn').onclick = () => document.getElementById('listPanel').classList.toggle('open');
 document.getElementById('listClose').onclick = () => document.getElementById('listPanel').classList.remove('open');
 document.getElementById('sortSel').onchange = () => renderList();
-document.getElementById('favOnly').onchange = e => { state.favOnly = e.target.checked; apply(); };
 
 // mobile: filter sidebar toggle + keep the map sized correctly
 document.getElementById('filterBtn').onclick = () => document.getElementById('sidebar').classList.toggle('open');
@@ -765,17 +765,16 @@ function bindPoi(id, cat){
 bindPoi('poi-leisure','leisure'); bindPoi('poi-playground','playground'); bindPoi('poi-shop','shop'); bindPoi('poi-edu','edu'); bindPoi('poi-health','health'); bindPoi('poi-daycare','daycare'); bindPoi('poi-lightrail','lightrail'); bindPoi('poi-bus','bus'); bindPoi('poi-train','train'); bindPoi('poi-construction','construction');
 
 document.getElementById('reset').onclick = () => {
-  Object.assign(state, { maxPrice:9000, minSize:100, minConstrDist:0, rooms:"any", dislike:"any", mamad:"any", seaView:"any", immediate:"any", furnished:"any", twoParking:"any", lowFloor:"any", noBroker:"any", hasPrice:"any", parentBalcony:"any", storage:"any", gym:"any", guard:"any", favOnly:false });
+  Object.assign(state, { maxPrice:9000, minSize:100, minConstrDist:0, rooms:"any", statusFilter:"any", mamad:"any", seaView:"any", immediate:"any", furnished:"any", twoParking:"any", lowFloor:"any", noBroker:"any", hasPrice:"any", parentBalcony:"any", storage:"any", gym:"any", guard:"any" });
   priceEl.value = 9000; document.getElementById('priceVal').textContent = '9,000';
   sizeEl.value = 100; document.getElementById('sizeVal').textContent = '100 מ״ר';
   constrEl.value = 0; document.getElementById('constrVal').textContent = 'ללא';
   document.querySelectorAll('select[data-f]').forEach(sel => { sel.value = 'any'; sel.classList.remove('on'); });
-  document.getElementById('favOnly').checked = false;
   apply();
 };
 
 loadFromHash();     // restore a shared view (#s=) from the URL, if present
-loadFavsFromHash(); // import shared favorites (#fav=) into this device, if present
+loadMyDataFromHash(); // import shared statuses+notes (#data= / legacy #fav=) into this device, if present
 apply();
 </script>
 </body>
