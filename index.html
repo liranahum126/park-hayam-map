@@ -471,18 +471,30 @@ function getStatus(id){ return aptStatus[id] || "none"; }
 function setStatus(id, k){ if(!k || k==="none") delete aptStatus[id]; else aptStatus[id]=k; saveStatus(); apply(); }
 function setNote(id, txt){ txt=(txt||"").trim(); if(!txt) delete myNotes[id]; else myNotes[id]=txt; saveNotes(); }
 // wire the status dropdown + personal-notes textarea inside an open popup
+// wirePopup רק מציב את הערכים ההתחלתיים בחלון שנפתח (קריאה בלבד – בטוח מבחינת תזמון).
+// טיפול באירועים נעשה ב-delegation גלובלי (ראה למטה) כדי שלא נהיה תלויים באיזה חלון נפתח/נסגר.
 function wirePopup(a, popup){
-  // תחום את החיפוש לחלון שנפתח *כרגע* (לא לחלון ישן שעדיין דוהה ב-DOM) – אחרת המאזין מתחבר לחלון הלא נכון
   const root = (popup && popup.getElement && popup.getElement()) || document;
   const sel = root.querySelector('.statussel');
-  if(sel){ sel.value = getStatus(a.id); sel.onchange = () => setStatus(a.id, sel.value); }
+  if(sel) sel.value = getStatus(a.id);
   const ta = root.querySelector('.noteinput');
-  if(ta){
-    const hint = root.querySelector('.notehint');
-    ta.value = myNotes[a.id] || "";
-    ta.oninput = () => { setNote(a.id, ta.value); if(hint) hint.textContent = "נשמר אוטומטית ✓"; };
-  }
+  if(ta) ta.value = myNotes[a.id] || "";
 }
+
+// Event delegation יחיד: תופס change/input מכל statussel/noteinput שקיים כעת ב-DOM,
+// לפי data-id של האלמנט עצמו. עמיד לחלוטין לחפיפת חלונות, אלמנטים דוהים, ורנדור מחדש.
+document.addEventListener('change', (e) => {
+  const sel = e.target && e.target.closest && e.target.closest('.statussel');
+  if(sel && sel.dataset.id) setStatus(sel.dataset.id, sel.value);
+});
+document.addEventListener('input', (e) => {
+  const ta = e.target && e.target.closest && e.target.closest('.noteinput');
+  if(ta && ta.dataset.id){
+    setNote(ta.dataset.id, ta.value);
+    const hint = ta.parentElement && ta.parentElement.querySelector('.notehint');
+    if(hint) hint.textContent = "נשמר אוטומטית ✓";
+  }
+});
 
 // ---------- Share / export ----------
 function shareText(){
@@ -621,8 +633,8 @@ function popupHtml(a){
     <div class="contact">☎️ <b>יצירת קשר:</b> ${a.contact}<div class="src">מקור: ${srcName}${a.approx ? " · 📍 מיקום מקורב" : ""}</div></div>
     <div class="statuswrap">
       <label>הסטטוס שלי לדירה זו:</label>
-      <select class="statussel">${STATUSES.map(s=>`<option value="${s.k}">${s.icon} ${s.label}</option>`).join("")}</select>
-      <textarea class="noteinput" placeholder="📝 הערות אישיות (למשל: לשאול על ארנונה, קרוב לגן…)"></textarea>
+      <select class="statussel" data-id="${a.id}">${STATUSES.map(s=>`<option value="${s.k}">${s.icon} ${s.label}</option>`).join("")}</select>
+      <textarea class="noteinput" data-id="${a.id}" placeholder="📝 הערות אישיות (למשל: לשאול על ארנונה, קרוב לגן…)"></textarea>
       <div class="notehint">הסטטוס וההערה נשמרים אוטומטית במכשיר שלך</div>
     </div>
     <a class="btn" href="${a.url}" target="_blank">פתח מודעה + הצג טלפון ↗</a>
