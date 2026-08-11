@@ -99,6 +99,7 @@
     .pop .contact b { color: #0f172a; }
     .pop .src { font-size: 11px; color: #64748b; margin-top: 4px; }
     .pop a.btn { display: inline-block; margin-top: 8px; font-size: 12px; color: #fff; background: #2563eb; padding: 6px 10px; border-radius: 7px; text-decoration: none; }
+    .pop a.btn.maps { background: #16a34a; margin-right: 6px; }
   </style>
 </head>
 <body>
@@ -638,6 +639,7 @@ function popupHtml(a){
       <div class="notehint">הסטטוס וההערה נשמרים אוטומטית במכשיר שלך</div>
     </div>
     <a class="btn" href="${a.url}" target="_blank">פתח מודעה + הצג טלפון ↗</a>
+    <a class="btn maps" href="https://www.google.com/maps/search/?api=1&query=${a.lat},${a.lng}" target="_blank" rel="noopener">🗺️ פתח ב-Google Maps${a.approx ? " (מיקום מקורב)" : ""}</a>
   </div>`;
 }
 
