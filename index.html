@@ -130,7 +130,7 @@
       </select>
     </div>
     <button id="shareBtn">📤 שתף</button>
-    <button id="linkBtn">🔗 העתק קישור לתצוגה</button>
+    <button id="linkBtn">🔗 העתק קישור מלא (תצוגה + סימונים)</button>
     <button id="kmlBtn">🗺️ ייצא ל-Google My Maps (KML)</button>
     <button id="favShareBtn">🏷️ שתף סטטוסים והערות (קישור)</button>
     <button id="clearViewBtn">↺ אפס תצוגה (נקה קישור)</button>
@@ -562,12 +562,17 @@ function loadFromHash(){
   } catch(e){ /* bad/old link – ignore, show defaults */ }
 }
 async function copyViewLink(){
-  const url = location.origin + location.pathname + '#s=' + encodeState();
+  // הקישור המלא: סינון + מיון (#s=) וגם הסטטוסים וההערות (#data=), כדי שבפתיחה בכל מכשיר הכל ישוחזר
+  const hasData = Object.keys(aptStatus).length || Object.keys(myNotes).length;
+  const url = location.origin + location.pathname + '#s=' + encodeState() + (hasData ? '&data=' + encodeMyData() : '');
   history.replaceState(null, '', url); // reflect in the address bar
-  try { if(navigator.share){ await navigator.share({ title:'דירות בפארק הים – תצוגה משותפת', url }); return; } }
+  const msg = hasData
+    ? 'הקישור המלא הועתק! 🔗\nהוא כולל את הסינון, המיון, וגם את כל הדירות שסימנת וההערות – בפתיחה בכל מכשיר הכול ישוחזר אוטומטית.'
+    : 'הקישור הועתק! 🔗\nהוא כולל את הסינון והמיון. עדיין לא סימנת דירות – ברגע שתסמן, הקישור יכלול גם אותן.';
+  try { if(navigator.share){ await navigator.share({ title:'דירות בפארק הים', url }); return; } }
   catch(e){ if(e && e.name === 'AbortError') return; }
-  try { await navigator.clipboard.writeText(url); alert('הקישור לתצוגה הועתק! 🔗\nכל מי שיפתח אותו יראה בדיוק את הסינון והמיון שלך (הסטטוסים נשלחים בכפתור הנפרד).'); return; } catch(e){}
-  prompt('העתק את הקישור לתצוגה:', url);
+  try { await navigator.clipboard.writeText(url); alert(msg); return; } catch(e){}
+  prompt('העתק את הקישור:', url);
 }
 document.getElementById('linkBtn').onclick = copyViewLink;
 // reset view: drop the #s= from the URL and reload clean defaults (keeps your own saved favorites)
@@ -592,11 +597,18 @@ function loadMyDataFromHash(){
   try {
     if(md){
       const obj = JSON.parse(decodeURIComponent(escape(atob(md[1]))));
-      let n = 0;
-      if(obj.stt && typeof obj.stt === 'object'){ Object.assign(aptStatus, obj.stt); n = Object.keys(obj.stt).length; saveStatus(); }
-      if(obj.nt  && typeof obj.nt  === 'object'){ Object.assign(myNotes,  obj.nt);  saveNotes(); }
+      // מיזוג – סופרים רק שינויים אמיתיים, כדי שפתיחת הקישור-של-עצמך על המכשיר שלך תהיה שקטה (ללא התראה)
+      let changed = 0;
+      if(obj.stt && typeof obj.stt === 'object'){
+        for(const [id, v] of Object.entries(obj.stt)){ if(aptStatus[id] !== v){ aptStatus[id] = v; changed++; } }
+        saveStatus();
+      }
+      if(obj.nt && typeof obj.nt === 'object'){
+        for(const [id, v] of Object.entries(obj.nt)){ if(myNotes[id] !== v){ myNotes[id] = v; changed++; } }
+        saveNotes();
+      }
       apply();
-      alert(`התקבלו סטטוסים והערות בקישור${n ? ` (${n} דירות מסומנות)` : ''}.\nהם נשמרו אצלך במכשיר. 🏷️`);
+      if(changed) alert(`התקבלו סימונים/הערות מהקישור (${changed} עדכונים) ונשמרו אצלך במכשיר. 🏷️`);
     } else if(fv){
       const ids = JSON.parse(decodeURIComponent(escape(atob(fv[1]))));
       if(Array.isArray(ids) && ids.length){
