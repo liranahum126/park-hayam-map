@@ -105,6 +105,18 @@
     .pop .src { font-size: 11px; color: #64748b; margin-top: 4px; }
     .pop a.btn { display: inline-block; margin-top: 8px; font-size: 12px; color: #fff; background: #2563eb; padding: 6px 10px; border-radius: 7px; text-decoration: none; }
     .pop a.btn.maps { background: #16a34a; margin-right: 6px; }
+    /* wide (landscape) popup: fit more data without panning */
+    .leaflet-popup-content { max-width: calc(100vw - 24px); }
+    .pop { width: 500px; max-width: 100%; }
+    .pop .specs { display: grid; grid-template-columns: 1fr 1fr; column-gap: 18px; row-gap: 0; margin: 6px 0 2px; }
+    .pop .kv { display: flex; justify-content: space-between; gap: 10px; font-size: 12.5px; padding: 3px 0; border-bottom: 1px solid #f1f5f9; break-inside: avoid; }
+    .pop .kv .k { color: #64748b; white-space: nowrap; }
+    .pop .kv .v { text-align: left; }
+    .pop .cols2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; align-items: start; }
+    @media (max-width: 480px) {
+      .pop .specs { grid-template-columns: 1fr; }
+      .pop .cols2 { grid-template-columns: 1fr; }
+    }
   </style>
 </head>
 <body>
@@ -635,32 +647,35 @@ function popupHtml(a){
   if(a.floor<=5) tags.push("קומה נמוכה");
   if(a.noBroker) tags.push("ללא תיווך");
   const srcName = a.source==="nadlan2" ? "Nadlan2" : "yad2";
+  const kv = (k, v) => `<div class="kv"><span class="k">${k}</span><span class="v">${v}</span></div>`;
   return `<div class="pop">
     <h3>${a.name}</h3>
     <div class="price">${a.rent!=null ? nis(a.rent)+" ₪ / חודש" : "מחיר לא צוין"}</div>
-    <table>
-      <tr><td class="k">🚪 חדרים</td><td>${a.rooms!=null ? a.rooms : "לא צוין"}</td></tr>
-      <tr><td class="k">גודל</td><td>${a.size} מ״ר</td></tr>
-      <tr><td class="k">קומה</td><td>${a.floor}${a.floors? " מתוך "+a.floors : ""}</td></tr>
-      <tr><td class="k">מצב</td><td>${a.cond}</td></tr>
-      <tr><td class="k">כניסה</td><td>${a.entry}</td></tr>
-      <tr><td class="k">חניה</td><td>${a.parking}</td></tr>
-      <tr><td class="k">🛡️ ממ״ד</td><td>${a.mamad ? "יש ✓" : "אין"}</td></tr>
-      <tr><td class="k">🛏️ מרפסת הורים</td><td>${pb}</td></tr>
-      <tr><td class="k">📦 מחסן</td><td>${a.storage==='yes'?'יש ✓':'לא צוין'}</td></tr>
-      <tr><td class="k">🏋️ חדר כושר</td><td>${a.gym==='yes'?'יש ✓':a.gym==='no'?'אין':'לא צוין'}</td></tr>
-      <tr><td class="k">👮 שומר</td><td>${a.guard==='yes'?'יש ✓':a.guard==='no'?'אין':'לא צוין'}</td></tr>
-      ${lrt ? `<tr><td class="k">🚈 רק״ל</td><td>${fmtDist(lrt.dist)} · ${shortStop(lrt.name)}</td></tr>` : ""}
-      ${bus ? `<tr><td class="k">🚌 אוטובוס</td><td>${fmtDist(bus.dist)}</td></tr>` : ""}
-      ${train ? `<tr><td class="k">🚆 רכבת ישראל</td><td>${fmtDist(train.dist)}</td></tr>` : ""}
-      ${constr ? `<tr><td class="k">🚧 אתר בנייה קרוב</td><td>${fmtDist(constr.dist)}</td></tr>` : ""}
-      <tr><td class="k">ועד בית</td><td>${a.fee!=null ? nis(a.fee)+" ₪" : "לא צוין"}</td></tr>
-      ${total!=null ? `<tr><td class="k">סה״כ משוער</td><td><b>${nis(total)} ₪</b></td></tr>` : ""}
-    </table>
+    <div class="specs">
+      ${kv("🚪 חדרים", a.rooms!=null ? a.rooms : "לא צוין")}
+      ${kv("📐 גודל", a.size+" מ״ר")}
+      ${kv("🏢 קומה", a.floor + (a.floors? " / "+a.floors : ""))}
+      ${kv("🚗 חניה", a.parking)}
+      ${kv("🛡️ ממ״ד", a.mamad ? "יש ✓" : "אין")}
+      ${kv("🛏️ מרפסת הורים", pb)}
+      ${kv("📦 מחסן", a.storage==='yes'?'יש ✓':'לא צוין')}
+      ${kv("🏋️ חדר כושר", a.gym==='yes'?'יש ✓':a.gym==='no'?'אין':'לא צוין')}
+      ${kv("👮 שומר", a.guard==='yes'?'יש ✓':a.guard==='no'?'אין':'לא צוין')}
+      ${kv("⚡ כניסה", a.entry)}
+      ${kv("💰 ועד בית", a.fee!=null ? nis(a.fee)+" ₪" : "לא צוין")}
+      ${total!=null ? kv("🧮 סה״כ משוער", `<b>${nis(total)} ₪</b>`) : ""}
+      ${lrt ? kv("🚈 רק״ל", `${fmtDist(lrt.dist)} · ${shortStop(lrt.name)}`) : ""}
+      ${bus ? kv("🚌 אוטובוס", fmtDist(bus.dist)) : ""}
+      ${train ? kv("🚆 רכבת ישראל", fmtDist(train.dist)) : ""}
+      ${constr ? kv("🚧 אתר בנייה", fmtDist(constr.dist)) : ""}
+    </div>
+    <div class="kv" style="border:none;padding-top:4px"><span class="k">🏗️ מצב</span><span class="v">${a.cond}</span></div>
     <div class="tags">${tags.map(t=>`<span class="tag">${t}</span>`).join("")}</div>
     <div style="font-size:12px;color:#475569;margin-top:8px">${a.notes}</div>
-    <div class="walk">🚶 זמן הליכה: 🏖️ ים <b id="w-beach-${a.id}">…</b> · 🌳 פארק/גינה <b id="w-park-${a.id}">…</b> · 🚈 רק״ל <b id="w-lrt-${a.id}">…</b> · ✚ מכבי <b id="w-macc-${a.id}">…</b></div>
-    <div class="contact">☎️ <b>יצירת קשר:</b> ${a.contact}<div class="src">מקור: ${srcName}${a.approx ? " · 📍 מיקום מקורב" : ""}</div></div>
+    <div class="cols2">
+      <div class="walk" style="margin-top:0">🚶 זמן הליכה:<br>🏖️ ים <b id="w-beach-${a.id}">…</b> · 🌳 פארק <b id="w-park-${a.id}">…</b><br>🚈 רק״ל <b id="w-lrt-${a.id}">…</b> · ✚ מכבי <b id="w-macc-${a.id}">…</b></div>
+      <div class="contact" style="margin-top:0">☎️ <b>יצירת קשר:</b><br>${a.contact}<div class="src">מקור: ${srcName}${a.approx ? " · 📍 מיקום מקורב" : ""}</div></div>
+    </div>
     <div class="statuswrap">
       <label>הסטטוס שלי לדירה זו:</label>
       <select class="statussel" data-id="${a.id}">${STATUSES.map(s=>`<option value="${s.k}">${s.icon} ${s.label}</option>`).join("")}</select>
@@ -677,7 +692,7 @@ const markers = apts.map(a => {
   const stroke = a.recommend ? '#fbbf24' : '#ffffff';
   const sw = a.recommend ? 3 : 2;
   const m = L.marker([a.lat, a.lng], { icon: pinIcon(fill, '₪', stroke, sw) })
-    .bindPopup(popupHtml(a), { maxWidth: 300 });
+    .bindPopup(popupHtml(a), { maxWidth: Math.min(560, (window.innerWidth||560) - 24), minWidth: 300, autoPan: false });
   m.on('popupopen', (e) => { fillWalk(a); wirePopup(a, e.popup); });
   m.on('popupclose', () => renderList());
   return { a, m };
