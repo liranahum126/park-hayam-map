@@ -47,6 +47,11 @@
     .line { width: 18px; height: 0; border-top: 3px dashed var(--boundary); flex: none; }
     #listBtn { position: fixed; top: 12px; right: 12px; z-index: 1200; background: var(--accent); color:#06283d; border:none; border-radius:10px; padding:10px 14px; font-weight:700; font-size:13px; cursor:pointer; box-shadow:0 2px 10px rgba(0,0,0,.35); }
     #listBtn:hover { opacity:.92; }
+    #locBtn { position: fixed; bottom: 92px; left: 10px; z-index: 1100; background:#3b82f6; color:#fff; border:none; border-radius:10px; padding:9px 12px; font-weight:700; font-size:13px; cursor:pointer; box-shadow:0 2px 10px rgba(0,0,0,.35); }
+    #locBtn:hover { opacity:.92; }
+    #locBtn.on { background:#16a34a; }
+    #kmlBtn { width:100%; background:#34a853; color:#fff; border:none; border-radius:8px; padding:9px; font-weight:700; font-size:13px; cursor:pointer; margin-bottom:8px; }
+    #kmlBtn:hover { opacity:.92; }
     #filterBtn { position: fixed; top: 12px; left: 12px; z-index: 1200; display:none; background: var(--accent); color:#06283d; border:none; border-radius:10px; padding:10px 14px; font-weight:700; font-size:13px; cursor:pointer; box-shadow:0 2px 10px rgba(0,0,0,.35); }
     #sideClose { display:none; position:absolute; top:10px; left:10px; background:var(--panel2); color:var(--text); border:none; border-radius:8px; width:32px; height:32px; font-size:18px; line-height:1; cursor:pointer; }
     @media (max-width: 820px) {
@@ -107,6 +112,7 @@
   <div id="map"></div>
   <button id="filterBtn">⚙ סינון</button>
   <button id="listBtn">☰ רשימת דירות</button>
+  <button id="locBtn" title="הצג את המיקום החי שלי על המפה">📍 מיקום חי</button>
   <div id="listPanel">
     <button id="listClose" title="סגור">×</button>
     <h2 id="listTitle">רשימת דירות</h2>
@@ -120,10 +126,12 @@
         <option value="rooms-asc">חדרים – מהמעט להרבה</option>
         <option value="floor-asc">קומה – מהנמוך לגבוה</option>
         <option value="lrt-asc">מרחק מרק״ל – מהקרוב לרחוק</option>
+        <option value="me-asc">מרחק ממני 📍 – מהקרוב לרחוק</option>
       </select>
     </div>
     <button id="shareBtn">📤 שתף</button>
     <button id="linkBtn">🔗 העתק קישור לתצוגה</button>
+    <button id="kmlBtn">🗺️ ייצא ל-Google My Maps (KML)</button>
     <button id="favShareBtn">🏷️ שתף סטטוסים והערות (קישור)</button>
     <button id="clearViewBtn">↺ אפס תצוגה (נקה קישור)</button>
     <div id="listBody"></div>
@@ -131,14 +139,14 @@
   <div id="sidebar">
     <button id="sideClose" title="סגור">×</button>
     <h1>🏠 דירות בפארק הים</h1>
-    <p class="sub">בת ים · 3–5 חדרים · 100 מ״ר+ · עד 9,000 ₪ · 58 דירות מ-yad2 ו-Nadlan2</p>
+    <p class="sub">בת ים · 3–5 חדרים · 100 מ״ר+ · עד 9,200 ₪ · 61 דירות מ-yad2 ו-Nadlan2</p>
 
-    <div class="count">מציג <b id="cnt">58</b> מתוך 58 דירות</div>
+    <div class="count">מציג <b id="cnt">61</b> מתוך 61 דירות</div>
 
     <div class="card">
       <h2>סינון לפי מחיר</h2>
-      <div class="valbox">עד <span id="priceVal">9,000</span> ₪ / חודש</div>
-      <input type="range" id="price" min="7000" max="9000" step="100" value="9000" />
+      <div class="valbox">עד <span id="priceVal">9,200</span> ₪ / חודש</div>
+      <input type="range" id="price" min="7000" max="9200" step="100" value="9200" />
       <div class="row" style="margin-top:10px">
         <label>גודל מינימלי</label>
         <span class="valbox" id="sizeVal">100 מ״ר</span>
@@ -197,7 +205,7 @@
         <div class="li"><span class="line"></span> גבול שכונת פארק הים (מקורב)</div>
       </div>
     </div>
-    <p class="sub" style="margin-top:8px">* עודכן 11/08/26 – 58 דירות פעילות (עד 9,000 ₪, 100 מ״ר+). חלק מהמיקומים והגבול מקורבים (מסומן 📍 בחלון). טלפונים נחשפים בלחיצה על "הצג מספר" במודעה. "לא צוין" בפיצ׳ר = לא הופיע במודעה (אינו בהכרח היעדר).</p>
+    <p class="sub" style="margin-top:8px">* עודכן 12/08/26 – 61 דירות פעילות (עד 9,200 ₪, 100 מ״ר+). חלק מהמיקומים והגבול מקורבים (מסומן 📍 בחלון). טלפונים נחשפים בלחיצה על "הצג מספר" במודעה. "לא צוין" בפיצ׳ר = לא הופיע במודעה (אינו בהכרח היעדר).</p>
   </div>
 </div>
 
@@ -418,6 +426,9 @@ function nearestPOI(a, cat){
   return best;
 }
 function nearestDist(a, cat){ const n = nearestPOI(a, cat); return n ? n.dist : Infinity; }
+// live-location: straight-line distance from the user's current position to an apartment
+let myLoc = null; // {lat, lng, acc} once the user turns on live location
+function meDist(a){ return myLoc ? haversine(a.lat, a.lng, myLoc.lat, myLoc.lng) : Infinity; }
 function fmtDist(m){ return m>=1000 ? (m/1000).toFixed(1)+" ק״מ" : Math.round(m/10)*10+" מ׳"; }
 function shortStop(name){ return name.replace(/^רק״ל – /,'').replace(/^אוטובוס: /,'').replace(/ 🚈| 🚌/,''); }
 
@@ -678,7 +689,7 @@ Object.values(poiLayers).forEach(l => l.addTo(map));
 map.removeLayer(poiLayers.bus); // bus stops off by default (checkbox unchecked)
 
 // ---------- Filtering ----------
-const state = { maxPrice: 9000, minSize: 100, minConstrDist: 150, rooms:"any", statusFilter:"any", mamad:"any", seaView:"any", immediate:"any", furnished:"any", twoParking:"any", lowFloor:"any", noBroker:"any", hasPrice:"any", parentBalcony:"any", storage:"any", gym:"any", guard:"any" };
+const state = { maxPrice: 9200, minSize: 100, minConstrDist: 150, rooms:"any", statusFilter:"any", mamad:"any", seaView:"any", immediate:"any", furnished:"any", twoParking:"any", lowFloor:"any", noBroker:"any", hasPrice:"any", parentBalcony:"any", storage:"any", gym:"any", guard:"any" };
 
 // value of each tri-state feature for a given apartment
 function featureVal(a, f){
@@ -740,6 +751,7 @@ function renderList(){
     'rooms-asc':  (p,q) => (p.rooms==null?Infinity:p.rooms) - (q.rooms==null?Infinity:q.rooms),
     'floor-asc':  (p,q) => p.floor - q.floor,
     'lrt-asc':    (p,q) => lrtDist(p) - lrtDist(q),
+    'me-asc':     (p,q) => meDist(p) - meDist(q),
   }[sortBy];
   const list = markers.map(x => x.a).filter(passes).sort(cmp);
   document.getElementById('listTitle').textContent = `רשימת דירות (${list.length})`;
@@ -750,7 +762,7 @@ function renderList(){
   body.innerHTML = list.map(a => `
     <div class="litem${a.recommend?' rec':''}${getStatus(a.id)==='dislike'?' dis':''}" data-id="${a.id}">
       <div class="lt"><span class="lname">${a.recommend?'<span class="lstar">★</span> ':''}${a.name}</span><span class="lprice">${a.rent!=null?nis(a.rent)+' ₪':'—'}</span></div>
-      <div class="lmeta"><span class="lstatus" style="background:${STATUS_MAP[getStatus(a.id)].color};color:${STATUS_MAP[getStatus(a.id)].fg}">${STATUS_MAP[getStatus(a.id)].icon} ${STATUS_MAP[getStatus(a.id)].label}</span>${a.rooms?a.rooms+' חד׳ · ':''}${a.size} מ״ר · קומה ${a.floor}${a.floors?'/'+a.floors:''}${a.noBroker?' · ללא תיווך':''}${a.parentBalcony==='yes'?' · מרפסת הורים':''}</div>
+      <div class="lmeta"><span class="lstatus" style="background:${STATUS_MAP[getStatus(a.id)].color};color:${STATUS_MAP[getStatus(a.id)].fg}">${STATUS_MAP[getStatus(a.id)].icon} ${STATUS_MAP[getStatus(a.id)].label}</span>${myLoc?`<span style="color:#60a5fa;font-weight:700">📍 ${fmtDist(meDist(a))}</span> · `:''}${a.rooms?a.rooms+' חד׳ · ':''}${a.size} מ״ר · קומה ${a.floor}${a.floors?'/'+a.floors:''}${a.noBroker?' · ללא תיווך':''}${a.parentBalcony==='yes'?' · מרפסת הורים':''}</div>
       ${myNotes[a.id]?`<div class="lnote">📝 ${escHtml(myNotes[a.id])}</div>`:''}
     </div>`).join('');
   body.querySelectorAll('.litem').forEach(el => {
@@ -794,13 +806,100 @@ function bindPoi(id, cat){
 bindPoi('poi-leisure','leisure'); bindPoi('poi-playground','playground'); bindPoi('poi-shop','shop'); bindPoi('poi-edu','edu'); bindPoi('poi-health','health'); bindPoi('poi-daycare','daycare'); bindPoi('poi-lightrail','lightrail'); bindPoi('poi-bus','bus'); bindPoi('poi-train','train'); bindPoi('poi-construction','construction');
 
 document.getElementById('reset').onclick = () => {
-  Object.assign(state, { maxPrice:9000, minSize:100, minConstrDist:0, rooms:"any", statusFilter:"any", mamad:"any", seaView:"any", immediate:"any", furnished:"any", twoParking:"any", lowFloor:"any", noBroker:"any", hasPrice:"any", parentBalcony:"any", storage:"any", gym:"any", guard:"any" });
-  priceEl.value = 9000; document.getElementById('priceVal').textContent = '9,000';
+  Object.assign(state, { maxPrice:9200, minSize:100, minConstrDist:0, rooms:"any", statusFilter:"any", mamad:"any", seaView:"any", immediate:"any", furnished:"any", twoParking:"any", lowFloor:"any", noBroker:"any", hasPrice:"any", parentBalcony:"any", storage:"any", gym:"any", guard:"any" });
+  priceEl.value = 9200; document.getElementById('priceVal').textContent = '9,200';
   sizeEl.value = 100; document.getElementById('sizeVal').textContent = '100 מ״ר';
   constrEl.value = 0; document.getElementById('constrVal').textContent = 'ללא';
   document.querySelectorAll('select[data-f]').forEach(sel => { sel.value = 'any'; sel.classList.remove('on'); });
   apply();
 };
+
+// ---------- Live location (blue dot that follows you) ----------
+let locWatch = null, locDot = null, locAcc = null;
+function stopLocate(){
+  if(locWatch != null){ navigator.geolocation.clearWatch(locWatch); locWatch = null; }
+  if(locDot){ map.removeLayer(locDot); locDot = null; }
+  if(locAcc){ map.removeLayer(locAcc); locAcc = null; }
+  myLoc = null;
+  const b = document.getElementById('locBtn');
+  b.classList.remove('on'); b.textContent = '📍 מיקום חי';
+  renderList();
+}
+function startLocate(){
+  if(!navigator.geolocation){ alert('הדפדפן לא תומך באיתור מיקום.'); return; }
+  const b = document.getElementById('locBtn');
+  b.textContent = '📍 מאתר…';
+  let first = true;
+  locWatch = navigator.geolocation.watchPosition(pos => {
+    const lat = pos.coords.latitude, lng = pos.coords.longitude, acc = pos.coords.accuracy || 30;
+    myLoc = { lat, lng, acc };
+    if(!locDot){
+      locAcc = L.circle([lat,lng], { radius:acc, color:'#2563eb', weight:1, opacity:.4, fillColor:'#2563eb', fillOpacity:.10, interactive:false }).addTo(map);
+      locDot = L.circleMarker([lat,lng], { radius:9, color:'#fff', weight:3, fillColor:'#2563eb', fillOpacity:1 }).addTo(map).bindTooltip('אתה כאן 📍', { direction:'top' });
+    } else {
+      locDot.setLatLng([lat,lng]); locAcc.setLatLng([lat,lng]).setRadius(acc);
+    }
+    b.classList.add('on'); b.textContent = '📍 עוקב · כבה';
+    if(first){
+      first = false;
+      map.setView([lat,lng], 16, { animate:true });
+      const ss = document.getElementById('sortSel'); if(ss) ss.value = 'me-asc'; // sort the list by proximity to me
+    }
+    renderList();
+  }, err => {
+    stopLocate();
+    alert(err.code === 1 ? 'הגישה למיקום נדחתה. יש לאשר הרשאת מיקום לאתר בהגדרות הדפדפן ולנסות שוב.'
+        : err.code === 2 ? 'לא ניתן לאתר את המיקום כרגע (אין אות/GPS).'
+        : 'פג הזמן לאיתור המיקום. נסה שוב.');
+  }, { enableHighAccuracy:true, maximumAge:5000, timeout:15000 });
+}
+document.getElementById('locBtn').onclick = () => { if(locWatch != null) stopLocate(); else startLocate(); };
+
+// ---------- Export the filtered pins to KML (for Google My Maps) ----------
+function buildKml(list){
+  const esc = s => String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  const placemarks = list.map(a => {
+    const total = a.rent != null ? a.rent + (a.fee||0) : null;
+    const st = getStatus(a.id);
+    const rows = [
+      `<b>${a.rent!=null ? nis(a.rent)+' ₪ / חודש' : 'מחיר לא צוין'}</b>`,
+      `${a.rooms?a.rooms+' חדרים · ':''}${a.size} מ״ר · קומה ${a.floor}${a.floors?'/'+a.floors:''}`,
+      `מצב: ${esc(a.cond)} · כניסה: ${esc(a.entry)} · חניה: ${a.parking}`,
+      `${a.seaView?'🌊 נוף לים · ':''}${a.mamad?'🛡️ ממ״ד · ':''}${a.gym==='yes'?'🏋️ חדר כושר · ':''}${a.guard==='yes'?'👮 שמירה':''}`,
+      total!=null ? `סה״כ משוער (כולל ועד): <b>${nis(total)} ₪</b>` : '',
+      a.notes ? esc(a.notes) : '',
+      st!=='none' ? `סטטוס אישי: ${STATUS_MAP[st].icon} ${STATUS_MAP[st].label}` : '',
+      myNotes[a.id] ? `📝 ${esc(myNotes[a.id])}` : '',
+      `☎️ ${esc(a.contact)}`,
+      `<a href="${esc(a.url)}">פתח מודעה במקור ↗</a>`
+    ].filter(Boolean).join('<br/>');
+    const style = a.recommend ? '#rec' : (a.source==='nadlan2' ? '#nadlan' : '#yad2');
+    return `<Placemark><name>${esc(a.name)} — ${a.rent!=null?nis(a.rent)+'₪':'—'}</name>`
+         + `<description><![CDATA[${rows}]]></description>`
+         + `<styleUrl>${style}</styleUrl>`
+         + `<Point><coordinates>${a.lng},${a.lat},0</coordinates></Point></Placemark>`;
+  }).join('\n');
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<kml xmlns="http://www.opengis.net/kml/2.2"><Document>
+<name>דירות פארק הים — ${list.length} דירות (${new Date().toLocaleDateString('he-IL')})</name>
+<Style id="rec"><IconStyle><color>ff24bffb</color><scale>1.1</scale><Icon><href>http://maps.google.com/mapfiles/kml/paddle/stars.png</href></Icon></IconStyle></Style>
+<Style id="yad2"><IconStyle><color>ffeb9334</color><Icon><href>http://maps.google.com/mapfiles/kml/paddle/blu-blank.png</href></Icon></IconStyle></Style>
+<Style id="nadlan"><IconStyle><color>ffd23f7c</color><Icon><href>http://maps.google.com/mapfiles/kml/paddle/purple-blank.png</href></Icon></IconStyle></Style>
+${placemarks}
+</Document></kml>`;
+}
+function exportKml(){
+  const list = markers.map(x => x.a).filter(passes);
+  if(!list.length){ alert('אין דירות בסינון הנוכחי לייצוא. שנה את הסינון ונסה שוב.'); return; }
+  const blob = new Blob([buildKml(list)], { type:'application/vnd.google-earth.kml+xml;charset=utf-8' });
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(blob);
+  link.download = `park-hayam-${list.length}-dirot.kml`;
+  document.body.appendChild(link); link.click(); link.remove();
+  setTimeout(() => URL.revokeObjectURL(link.href), 5000);
+  alert(`✅ יוצאו ${list.length} דירות לקובץ KML.\n\nלייבוא ל-Google My Maps:\n1. גלוש ל- mymaps.google.com ולחץ "צור מפה חדשה".\n2. תחת השכבה לחץ "ייבוא" ובחר את הקובץ שהורד.\n3. כל הדירות יופיעו כמפה פרטית שלך – עם שם, מחיר וקישור.\n\n(אפשר גם לפתוח את הקובץ ב-Google Earth.)`);
+}
+document.getElementById('kmlBtn').onclick = exportKml;
 
 loadFromHash();     // restore a shared view (#s=) from the URL, if present
 loadMyDataFromHash(); // import shared statuses+notes (#data= / legacy #fav=) into this device, if present
