@@ -638,9 +638,19 @@ function loadMyDataFromHash(){
   } catch(e){ /* קישור לא תקין – התעלם */ }
 }
 
-// turn an Israeli phone number inside the contact text into a tappable tel: link
-function linkifyPhone(s){
-  return String(s).replace(/0\d{1,2}-?\d{7}/g, m => `<a href="tel:${m.replace(/\D/g,'')}" style="color:#2563eb;font-weight:700;text-decoration:none">${m}</a>`);
+// turn an Israeli phone number inside the contact text into a tappable tel: link,
+// plus a WhatsApp link for mobile numbers (05x). Virtual landline proxies (073…) get call-only.
+function linkifyPhone(s, a){
+  return String(s).replace(/0\d{1,2}-?\d{7}/g, m => {
+    const digits = m.replace(/\D/g,'');
+    const tel = `<a href="tel:${digits}" style="color:#2563eb;font-weight:700;text-decoration:none">📞 ${m}</a>`;
+    if(/^05\d/.test(digits)){
+      const wa = '972' + digits.slice(1);
+      const msg = encodeURIComponent(`היי, אשמח לפרטים על הדירה${a&&a.name?` ב${a.name}`:''} שראיתי במפה 🙂`);
+      return `${tel} <a href="https://wa.me/${wa}?text=${msg}" target="_blank" rel="noopener" style="color:#16a34a;font-weight:700;text-decoration:none">💬 וואטסאפ</a>`;
+    }
+    return tel;
+  });
 }
 function popupHtml(a){
   const total = a.rent!=null ? (a.rent + (a.fee||0)) : null;
@@ -684,7 +694,7 @@ function popupHtml(a){
     <div style="font-size:12px;color:#475569;margin-top:8px">${a.notes}</div>
     <div class="cols2">
       <div class="walk" style="margin-top:0">🚶 זמן הליכה:<br>🏖️ ים <b id="w-beach-${a.id}">…</b> · 🌳 פארק <b id="w-park-${a.id}">…</b><br>🚈 רק״ל <b id="w-lrt-${a.id}">…</b> · ✚ מכבי <b id="w-macc-${a.id}">…</b></div>
-      <div class="contact" style="margin-top:0">☎️ <b>יצירת קשר:</b><br>${linkifyPhone(a.contact)}<div class="src">מקור: ${srcName}${a.approx ? " · 📍 מיקום מקורב" : ""}</div></div>
+      <div class="contact" style="margin-top:0">☎️ <b>יצירת קשר:</b><br>${linkifyPhone(a.contact, a)}<div class="src">מקור: ${srcName}${a.approx ? " · 📍 מיקום מקורב" : ""}</div></div>
     </div>
     <div class="statuswrap">
       <label>הסטטוס שלי לדירה זו:</label>
